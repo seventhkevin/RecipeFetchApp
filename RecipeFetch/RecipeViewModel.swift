@@ -26,6 +26,12 @@ class RecipeViewModel: ObservableObject {
         do {
             let recipes = try await apiClient.fetchRecipes(from: url)
             state = .loaded(recipes)
+            // TODO: change this to use func image below
+            for recipe in recipes {
+                if let url = recipe.photoURLSmall {
+                    try? await cacheImage(from: url)
+                }
+            }
         } catch {
             state = .error(error)
         }
@@ -36,8 +42,14 @@ class RecipeViewModel: ObservableObject {
         return try? await ImageCache.shared.image(for: url)
     }
 
-    func cacheImage(_ image: UIImage, for url: URL) async throws {
-        try await ImageCache.shared.saveToDisk(image: image, fileURL: ImageCache.shared.fileURL(for: url))
+    func cacheImage(from url: URL) async throws {
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard UIImage(data: data) != nil else {
+            throw NSError(domain: "RecipeViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid image data"])
+        }
+        
+        let fileURL = ImageCache.shared.fileURL(for: url, response: response)
+        try await ImageCache.shared.saveToDisk(data: data, fileURL: fileURL)
     }
 
     func cacheFileURL(for url: URL) -> URL {
