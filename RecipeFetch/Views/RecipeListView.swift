@@ -7,11 +7,11 @@
 import SwiftUI
 
 struct RecipeListView: View {
-    @StateObject private var viewModel: RecipeViewModel
+    @ObservedObject var viewModel: RecipeViewModel
     private let shouldFetchOnAppear: Bool
 
     init(viewModel: RecipeViewModel, shouldFetchOnAppear: Bool = true) {
-        self._viewModel = StateObject(wrappedValue: viewModel)
+        self.viewModel = viewModel // Direct assignment
         self.shouldFetchOnAppear = shouldFetchOnAppear
     }
 
