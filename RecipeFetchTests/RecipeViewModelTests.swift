@@ -72,22 +72,6 @@ final class RecipeViewModelTests: XCTestCase {
         }
     }
     
-    func testCacheImageInvalidData() async throws {
-        let url = URL(string: "https://example.com/invalid.jpg")!
-        let mockSession = MockURLSession(data: Data(), response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "image/jpeg"])!)
-        let mockFileManager = MockFileManager()
-        let mockCache = ImageCache(fileManager: mockFileManager, urlSession: mockSession)
-        
-        do {
-            try await viewModel.cacheImage(from: url)
-            XCTFail("Expected error for invalid image data")
-        } catch let error as NSError {
-            XCTAssertEqual(error.domain, "RecipeViewModel", "Error domain should be RecipeViewModel")
-            XCTAssertEqual(error.code, -1, "Error code should be -1")
-            XCTAssertTrue(mockFileManager.files.isEmpty, "No data should be cached")
-        }
-    }
-    
     func testSortByName() async throws {
         let recipes = [
             Recipe(

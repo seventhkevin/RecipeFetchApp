@@ -50,16 +50,7 @@ class RecipeViewModel: ObservableObject {
         return try? await ImageCache.shared.image(for: url)
     }
     
-    func cacheImage(from url: URL) async throws {
-        let (data, response) = try await URLSession.shared.data(from: url)
-        guard UIImage(data: data) != nil else {
-            throw NSError(domain: "RecipeViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid image data"])
-        }
-        
-        let fileURL = ImageCache.shared.fileURL(for: url, response: response)
-        try await ImageCache.shared.saveToDisk(data: data, fileURL: fileURL)
-    }
-    
+    // for previews
     func cacheFileURL(for url: URL) -> URL {
         ImageCache.shared.fileURL(for: url)
     }
