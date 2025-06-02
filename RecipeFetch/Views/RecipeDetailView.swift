@@ -29,7 +29,7 @@ struct RecipeDetailView: View {
                 Text("Cuisine: \(recipe.cuisine)")
                     .font(.subheadline)
                 if let sourceURL = recipe.sourceURL {
-                    Link("View Source", destination: sourceURL)
+                    Link("View Recipe", destination: sourceURL)
                         .font(.subheadline)
                 }
                 if let youtubeURL = recipe.youtubeURL {
@@ -38,8 +38,9 @@ struct RecipeDetailView: View {
                 }
                 // Share button using ShareLink
                 ShareLink(
-                    item: shareText(),
+                    item: smallImage.map { Image(uiImage: $0) } ?? Image(systemName: "fork.knife.circle"),
                     subject: Text("\(recipe.name) Recipe"),
+                    message: Text(shareText()),
                     preview: SharePreview(
                         recipe.name,
                         image: smallImage.map { Image(uiImage: $0) } ?? Image(systemName: "fork.knife.circle")

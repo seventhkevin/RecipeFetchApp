@@ -10,7 +10,6 @@ struct RecipeListView: View {
     @StateObject private var viewModel: RecipeViewModel
     private let shouldFetchOnAppear: Bool
 
-    // Initialize with a view model and fetch flag
     init(viewModel: RecipeViewModel = RecipeViewModel(), shouldFetchOnAppear: Bool = true) {
         self._viewModel = StateObject(wrappedValue: viewModel)
         self.shouldFetchOnAppear = shouldFetchOnAppear
@@ -31,7 +30,6 @@ struct RecipeListView: View {
                                 description: Text("There are no recipes to display at this time.")
                             )
                         } else {
-                            // Fallback for iOS 16
                             VStack(spacing: 16) {
                                 Image(systemName: "fork.knife.circle")
                                     .font(.system(size: 48))
@@ -48,7 +46,6 @@ struct RecipeListView: View {
                                 RecipeRow(recipe: recipe, viewModel: viewModel)
                             }
                         }
-                        .navigationTitle("Recipes")
                     }
                 case .error(let error):
                     VStack(spacing: 16) {
@@ -63,6 +60,20 @@ struct RecipeListView: View {
                             Task { await viewModel.fetchRecipes(from: Constants.API.baseRecipesURL) }
                         }
                         .buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+            .navigationTitle("Recipes")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Sort By", selection: $viewModel.sortOption) {
+                            ForEach(RecipeViewModel.SortOption.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                    } label: {
+                        Label("Sort", systemImage: "arrow.up.arrow.down")
                     }
                 }
             }
