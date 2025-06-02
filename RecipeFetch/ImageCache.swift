@@ -9,35 +9,48 @@ import UIKit
 actor ImageCache {
     static let shared = ImageCache()
     
-    private let fileManager = FileManager.default
+    private var fileManager: FileManager
     private let cacheDirectory: URL
+    private var urlSession: URLSessionProtocol
 
-    private init() {
+    init() {
+        self.fileManager = FileManager.default
+        self.urlSession = URLSession.shared
         let cachesDir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
         cacheDirectory = cachesDir.appendingPathComponent("RecipeImages")
         try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
     }
-
+    
+    init(fileManager: FileManager, urlSession: URLSessionProtocol = URLSession.shared) {
+        self.fileManager = fileManager
+        self.urlSession = urlSession
+        let cachesDir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        cacheDirectory = cachesDir.appendingPathComponent("RecipeImages")
+        try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    }
+    
     func image(for url: URL) async throws -> UIImage? {
-        let fileURL = fileURL(for: url)
+        let cacheURL = fileURL(for: url)
 
-        if let cachedImage = try await loadFromDisk(fileURL: fileURL) {
+        if let cachedImage = try await loadFromDisk(fileURL: cacheURL) {
             return cachedImage
         }
 
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await urlSession.data(from: url)
         guard let image = UIImage(data: data) else {
             return nil
         }
 
-        try await saveToDisk(image: image, fileURL: fileURL)
+        // Use response MIME type for file extension
+        let finalCacheURL = fileURL(for: url, response: response)
+        try await saveToDisk(data: data, fileURL: finalCacheURL)
         return image
     }
-
+    
     func loadFromDisk(fileURL: URL) async throws -> UIImage? {
         try await withCheckedThrowingContinuation { continuation in
             if fileManager.fileExists(atPath: fileURL.path) {
-                if let data = try? Data(contentsOf: fileURL),
+                if let data = fileManager.contents(atPath: fileURL.path),
                    let image = UIImage(data: data) {
                     continuation.resume(returning: image)
                 } else {
@@ -49,17 +62,12 @@ actor ImageCache {
         }
     }
 
-    func saveToDisk(image: UIImage, fileURL: URL) async throws {
+    func saveToDisk(data: Data, fileURL: URL) async throws {
         try await withCheckedThrowingContinuation { continuation in
-            if let data = image.jpegData(compressionQuality: 1.0) {
-                do {
-                    try data.write(to: fileURL)
-                    continuation.resume()
-                } catch {
-                    continuation.resume(throwing: error)
-                }
+            if fileManager.createFile(atPath: fileURL.path, contents: data, attributes: nil) {
+                continuation.resume()
             } else {
-                continuation.resume(throwing: NSError(domain: "ImageCache", code: -1, userInfo: nil))
+                continuation.resume(throwing: NSError(domain: "ImageCache", code: -2, userInfo: [NSLocalizedDescriptionKey: "Failed to write data to disk"]))
             }
         }
     }
@@ -69,14 +77,22 @@ actor ImageCache {
         try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
     }
 
-    nonisolated func fileURL(for url: URL) -> URL {
-        // Use String.hashValue for a unique file name
+    nonisolated func fileURL(for url: URL, response: URLResponse? = nil) -> URL {
         let urlString = url.absoluteString
         let hash = urlString.hashValue
-        // Convert to base-36 for compact name
         let hashString = String(hash, radix: 36)
-        // Get extension from URL, default to .jpg
-        let fileExtension = url.pathExtension.isEmpty ? "jpg" : url.pathExtension
+        // Use MIME type from response if available, else fall back to URL extension or .jpg
+        var fileExtension = "jpg"
+        if let httpResponse = response as? HTTPURLResponse,
+           let mimeType = httpResponse.mimeType {
+            if mimeType == "image/png" {
+                fileExtension = "png"
+            } else if mimeType == "image/jpeg" {
+                fileExtension = "jpg"
+            }
+        } else if !url.pathExtension.isEmpty {
+            fileExtension = url.pathExtension
+        }
         return cacheDirectory.appendingPathComponent("\(hashString).\(fileExtension)")
     }
 }

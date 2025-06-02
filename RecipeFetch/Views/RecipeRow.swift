@@ -8,7 +8,7 @@ import SwiftUI
 
 struct RecipeRow: View {
     let recipe: Recipe
-    @ObservedObject var viewModel: RecipeViewModel
+    let viewModel: RecipeViewModel
     @State private var image: UIImage?
 
     var body: some View {
@@ -26,6 +26,7 @@ struct RecipeRow: View {
             VStack(alignment: .leading) {
                 Text(recipe.name)
                     .font(.headline)
+                    .foregroundColor(.primary)
                 Text(recipe.cuisine)
                     .font(.subheadline)
                     .foregroundColor(.secondary)

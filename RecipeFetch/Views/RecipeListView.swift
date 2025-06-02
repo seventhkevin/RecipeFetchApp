@@ -7,62 +7,111 @@
 import SwiftUI
 
 struct RecipeListView: View {
-    @StateObject private var viewModel: RecipeViewModel
+    @ObservedObject var viewModel: RecipeViewModel
     private let shouldFetchOnAppear: Bool
 
-    // Initialize with a view model and fetch flag
-    init(viewModel: RecipeViewModel = RecipeViewModel(), shouldFetchOnAppear: Bool = true) {
-        self._viewModel = StateObject(wrappedValue: viewModel)
+    init(viewModel: RecipeViewModel, shouldFetchOnAppear: Bool = true) {
+        self.viewModel = viewModel // Direct assignment
         self.shouldFetchOnAppear = shouldFetchOnAppear
+    }
+
+    private var isSortAvailable: Bool {
+        if case .loaded(let recipes) = viewModel.state {
+            return recipes.count > 1
+        }
+        return false
     }
 
     var body: some View {
         NavigationView {
-            Group {
-                switch viewModel.state {
-                case .loading:
-                    ProgressView("Loading recipes...")
-                case .loaded(let recipes):
-                    if recipes.isEmpty {
-                        if #available(iOS 17.0, *) {
-                            ContentUnavailableView(
-                                "No Recipes Available",
-                                systemImage: "fork.knife.circle",
-                                description: Text("There are no recipes to display at this time.")
-                            )
-                        } else {
-                            // Fallback for iOS 16
-                            VStack(spacing: 16) {
-                                Image(systemName: "fork.knife.circle")
+            GeometryReader { geometry in
+                ScrollView {
+                    Group {
+                        switch viewModel.state {
+                        case .loading:
+                            VStack {
+                                ProgressView("Loading recipes...")
+                                    .padding()
+                            }
+                            .frame(minHeight: geometry.size.height)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                        case .loaded(let recipes):
+                            if recipes.isEmpty {
+                                VStack {
+                                    if #available(iOS 17.0, *) {
+                                        ContentUnavailableView(
+                                            "No Recipes Available",
+                                            systemImage: "fork.knife.circle",
+                                            description: Text("There are no recipes to display at this time.")
+                                        )
+                                    } else {
+                                        VStack(spacing: 16) {
+                                            Image(systemName: "fork.knife.circle")
+                                                .font(.system(size: 48))
+                                                .foregroundColor(.gray)
+                                            Text("No Recipes Available")
+                                                .font(.headline)
+                                            Text("There are no recipes to display at this time.")
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                                .frame(minHeight: geometry.size.height)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                            } else {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    ForEach(recipes) { recipe in
+                                        HStack {
+                                            // NavigationLink with RecipeRow and chevron
+                                            NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: viewModel)) {
+                                                HStack {
+                                                    RecipeRow(recipe: recipe, viewModel: viewModel)
+                                                    // Add chevron indicator on the right
+                                                    Spacer()
+                                                    Image(systemName: "chevron.right")
+                                                        .foregroundColor(.gray)
+                                                        .padding(.trailing, 8)
+                                                }
+                                            }
+                                        }
+                                        .frame(alignment: .leading)
+                                        .padding(.horizontal)
+                                        Divider()
+                                    }
+                                }
+                            }
+                        case .error(let error):
+                            VStack {
+                                Image(systemName: "exclamationmark.triangle")
                                     .font(.system(size: 48))
-                                    .foregroundColor(.gray)
-                                Text("No Recipes Available")
+                                    .foregroundColor(.red)
+                                Text("Error Loading Recipes")
                                     .font(.headline)
-                                Text("There are no recipes to display at this time.")
+                                Text(error.localizedDescription)
                                     .foregroundColor(.secondary)
                             }
+                            .frame(minHeight: geometry.size.height)
+                            .frame(maxWidth: .infinity, alignment: .center)
                         }
-                    } else {
-                        List(recipes) { recipe in
-                            NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: viewModel)) {
-                                RecipeRow(recipe: recipe, viewModel: viewModel)
-                            }
-                        }
-                        .navigationTitle("Recipes")
                     }
-                case .error(let error):
-                    VStack(spacing: 16) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 48))
-                            .foregroundColor(.red)
-                        Text("Error Loading Recipes")
-                            .font(.headline)
-                        Text(error.localizedDescription)
-                            .foregroundColor(.secondary)
-                        Button("Retry") {
-                            Task { await viewModel.fetchRecipes(from: Constants.API.baseRecipesURL) }
+                }
+                .refreshable {
+                    await viewModel.fetchRecipes(from: Constants.API.baseRecipesURL)
+                }
+            }
+            .navigationTitle("Recipes")
+            .toolbar {
+                if isSortAvailable {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            Picker("Sort By", selection: $viewModel.sortOption) {
+                                ForEach(RecipeViewModel.SortOption.allCases) { option in
+                                    Text(option.rawValue).tag(option)
+                                }
+                            }
+                        } label: {
+                            Label("Sort", systemImage: "arrow.up.arrow.down")
                         }
-                        .buttonStyle(.borderedProminent)
                     }
                 }
             }
@@ -74,7 +123,6 @@ struct RecipeListView: View {
         }
     }
 }
-
 // Helper function to create mock recipes
 private func makeMockRecipes() -> [Recipe] {
     [
@@ -122,6 +170,14 @@ private func makeMockViewModel(state: RecipeViewModel.State) -> RecipeViewModel 
         shouldFetchOnAppear: false
     )
 }
+
+#Preview("Loading State") {
+    RecipeListView(
+        viewModel: makeMockViewModel(state: .loading),
+        shouldFetchOnAppear: false
+    )
+}
+
 
 // Mock RecipeService for previews
 struct MockRecipeService: RecipeService {
