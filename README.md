@@ -12,10 +12,11 @@ RecipeFetch allows users to browse a list of recipes, view detailed information,
 - **Share Functionality**: Enables sharing recipe names and links.
 
 **Screenshots**:
-- ![Recipe List View](screenshots/recipe_list.png)
-- ![Recipe Detail View](screenshots/recipe_detail.png)
-- ![Empty State View](screenshots/empty_state.png)
-- ![Error State View](screenshots/error_state.png)
+- ![Recipe List View](screenshots/ListView.jpeg)
+- ![Recipe Detail View](screenshots/DetailView.jpeg)
+- ![Sort View](screenshots/Sort.jpeg)
+- ![Empty State View](screenshots/EmptyState.jpeg)
+- ![Error State View](screenshots/ErrorState.jpeg)
 
 **Video Demo** (optional):
 - [Insert Video Link Here]

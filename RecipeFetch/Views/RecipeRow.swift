@@ -26,6 +26,7 @@ struct RecipeRow: View {
             VStack(alignment: .leading) {
                 Text(recipe.name)
                     .font(.headline)
+                    .foregroundColor(.primary)
                 Text(recipe.cuisine)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
